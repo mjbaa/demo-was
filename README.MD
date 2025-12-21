@@ -1,14 +1,4 @@
-아래 README는 **과제 명세(1~8)**를 기준으로, 지금까지 네가 구현한 구조/의도/동작 방식을 “제출용 설명 문서” 형태로 정리한 버전이야. (NHN WAS 과제 스펙 기준 )
 
----
-
-````md
-# Java WAS 구현 과제 (NHN 사전과제) - demoWAS
-
-본 프로젝트는 Java 표준 라이브러리 기반으로 간단한 WAS(Web Application Server)를 구현한 과제입니다.  
-HTTP 요청을 파싱하여 **Host 기반 VirtualHost 처리**, **정적 파일 제공**, **에러 페이지 반환**, **보안 규칙 적용**, **URL→Servlet 클래스 매핑(SimpleServlet)**, **JUnit4 테스트**까지 수행하도록 구성했습니다. :contentReference[oaicite:1]{index=1}
-
----
 
 ## 1. 실행 방법 (필수 요구사항)
 
