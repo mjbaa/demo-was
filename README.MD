@@ -105,8 +105,6 @@ webroot/
 * Request Line에서 **Path와 Query String을 분리**하여 저장합니다.
 * Query Parameter는 Servlet에서 바로 사용할 수 있도록 미리 병합합니다.
 
-> 보안 Rule에서 Path를 처리할 때 Query String이 섞이지 않도록 설계했습니다.
-
 ---
 
 ### Dispatcher
@@ -178,6 +176,7 @@ StaticFileHandler
 ```json
 {
   "port": 8000,
+  "threadPoolSize": 10,
   "defaultServletPackage": "servlet",
   "hosts": {
     "localhost": { ... },
