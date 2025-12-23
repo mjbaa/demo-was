@@ -4,7 +4,7 @@
   "defaultServletPackage": "servlet",
   "hosts": {
     "localhost": {
-      "httpRoot": "webroot/localhost",
+      "httpRoot": "./webroot/localhost",
       "errorPages": {
         "403": "403.html",
         "404": "404.html",
@@ -12,7 +12,7 @@
       }
     },
     "a.com": {
-      "httpRoot": "webroot/a.com",
+      "httpRoot": "./webroot/a.com",
       "errorPages": {
         "403": "403.html",
         "404": "404.html",
@@ -20,7 +20,7 @@
       }
     },
     "b.com": {
-      "httpRoot": "webroot/b.com",
+      "httpRoot": "./webroot/b.com",
       "errorPages": {
         "403": "403.html",
         "404": "404.html",
