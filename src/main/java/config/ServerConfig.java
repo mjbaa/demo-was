@@ -20,7 +20,12 @@ public class ServerConfig {
         return hosts;
     }
 
+
     public HostConfig getHostConfig(String host){
         return getHosts().get(host);
+    }
+
+    public boolean hasHostConfig(String host) {
+        return hosts != null && hosts.containsKey(host);
     }
 }

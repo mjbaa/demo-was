@@ -40,11 +40,13 @@ public class Dispatcher {
         }
 
         String host = hostHeader.split(":")[0];
-        HostConfig hostConfig = serverConfig.getHostConfig(host);//hostConfig 선택
-        if(hostConfig == null){
+        if(!serverConfig.hasHostConfig(host)){
             log.warn("Unknown host: {}", hostHeader);
             return ErrorResponseBuilder.build(403,null);
         }
+        HostConfig hostConfig = serverConfig.getHostConfig(host);//hostConfig 선택
+
+
 
         HttpResponse securityResult = securityChain.check(request, hostConfig);
         if(securityResult != null){
@@ -65,14 +67,14 @@ public class Dispatcher {
             servlet.service(request,response);
             return response;
         } catch (ClassNotFoundException e){
-            //servlet 없음 -> 정적 파일 핸들러로 넘김
+            //정적 파일 처리
+            return StaticFileHandler.handle(request,hostConfig);
         } catch (Exception e){
             log.error("Internal server error", e);
             return ErrorResponseBuilder.build(500,hostConfig);
         }
 
-        //정적 파일 처리
-        return StaticFileHandler.handle(request,hostConfig);
+
         
 
     }

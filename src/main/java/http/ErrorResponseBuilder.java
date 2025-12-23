@@ -1,6 +1,8 @@
 package http;
 
 import config.HostConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -8,6 +10,8 @@ import java.nio.file.Path;
 
 // HostConfig 기반 에러 응답 생성
 public class ErrorResponseBuilder {
+    private static final Logger log =
+            LoggerFactory.getLogger(ErrorResponseBuilder.class);
 
     public static HttpResponse build(int statusCode, HostConfig hostConfig){
         //hostconfig 없는 경우
@@ -41,7 +45,7 @@ public class ErrorResponseBuilder {
             }
 
         } catch(IOException e){
-
+            log.error("Failed to load error page");
         }
 
         return defaultError(statusCode);

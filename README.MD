@@ -1,296 +1,209 @@
+## 2. 구조
 
+요청 처리 흐름은 다음과 같습니다.
 
-## 1. 실행 방법 (필수 요구사항)
+1. **HttpServer**
+   - `ServerSocket`을 통해 클라이언트 연결을 수락하고,
+     요청 처리를 위한 기본 입구 역할을 수행합니다.
 
-### 1) 빌드 + 테스트 + 패키징
-```bash
-mvn clean package
-````
+2. **HttpParser**
+   - 소켓의 `InputStream`을 읽어 HTTP 요청을 파싱하고,
+     이를 내부 표현인 `HttpRequest` 객체로 변환합니다.
 
-* 위 명령 실행 시 **JUnit4 테스트 수행** 후 jar 생성됩니다.
+3. **Dispatcher**
+   - Host 헤더를 기준으로 가상 호스트를 결정하고,
+     이후 요청의 전체 흐름을 제어합니다.
 
-### 2) 실행
+4. **Security Chain**
+   - 디렉터리 트래버설, 실행 파일 요청 등 보안 규칙을 순차적으로 검사합니다.
+   - 규칙에 위배되는 경우 즉시 에러 응답을 반환합니다.
 
-```bash
-java -jar target/demoWAS-1.0-SNAPSHOT.jar
-```
+5. **요청 처리 단계**
+   - 요청 경로에 해당하는 Servlet이 존재하면 Servlet을 통해 동적 응답을 생성합니다.
+   - Servlet이 존재하지 않는 경우 정적 파일 요청으로 간주하여 파일을 서빙합니다.
 
-> ※ 과제 요구사항은 `java -jar was.jar` 형태이므로, 제출 시 최종 산출물을 `was.jar`로 rename 하거나 `pom.xml`에서 artifactId/name을 조정해 `was.jar`로 생성되도록 맞출 수 있습니다.
-
----
-
-## 2. 프로젝트 구조
-
-### Maven 표준 디렉터리
-
-* `src/main/java` : WAS 구현 소스
-* `src/main/resources` : 설정 파일/리소스 (권장: config.json 위치)
-* `src/test/java` : JUnit4 테스트
-* `webroot/` : Host 별 정적 리소스 루트
-
-예시:
-
-```
-demoWAS/
- ├─ src/
- │   ├─ main/
- │   │   ├─ java/
- │   │   │   ├─ http/...
- │   │   │   ├─ config/...
- │   │   │   ├─ security/...
- │   │   │   └─ servlet/...
- │   │   └─ resources/
- │   │       └─ config.json
- │   └─ test/
- │       └─ java/
- │           ├─ http/DispatcherTest.java
- │           ├─ http/StaticFileHandlerTest.java
- │           ├─ http/HttpParserTest.java
- │           ├─ security/SecurityRuleTest.java
- │           └─ servlet/HelloServletTest.java
- ├─ webroot/
- │   ├─ localhost/
- │   │   ├─ index.html
- │   │   ├─ 403.html
- │   │   ├─ 404.html
- │   │   └─ 500.html
- │   ├─ a.com/
- │   │   └─ ...
- │   └─ b.com/
- │       └─ ...
- └─ pom.xml
-```
+6. **HttpResponseWriter**
+   - 최종적으로 생성된 `HttpResponse` 객체를
+     HTTP 프로토콜 형식에 맞게 직렬화하여 클라이언트로 전송합니다.
 
 ---
 
-## 3. 설정 파일(config.json)
+## 3. 주요 패키지 구조
 
-과제 요구사항에 따라 **포트 / host별 httpRoot / 에러 페이지 파일명 / 기본 servlet package**를 JSON으로 관리합니다.
+```
+src/main/java
+ ├─ HttpServer
+ ├─ http
+ │   ├─ HttpParser
+ │   ├─ Dispatcher
+ │   ├─ HttpRequest / HttpResponse
+ │   ├─ StaticFileHandler
+ │   ├─ ErrorResponseBuilder
+ │   └─ HttpResponseWriter
+ │
+ ├─ servlet
+ │   ├─ SimpleServlet
+ │   ├─ Hello
+ │   └─ Time
+ │
+ ├─ security
+ │   ├─ SecurityRule
+ │   ├─ AbstractSecurityRule
+ │   ├─ DirectoryTraversalRule
+ │   └─ ExecutableExtensionRule
+ │
+ ├─ config
+ │   ├─ ConfigLoader
+ │   ├─ ServerConfig
+ │   └─ HostConfig
+ │
+ └─ resources
+     ├─ config.json
+     └─ logback.xml
+```
 
-예시:
+정적 파일은 실행 환경에서 가상 호스트별로 분리된 외부 디렉터리를 사용합니다.
+
+```
+webroot/
+ ├─ localhost/
+ │   ├─ index.html
+ │   ├─ hello.html
+ │   ├─ 403.html
+ │   ├─ 404.html
+ │   └─ 500.html
+ └─ a.com/
+     ├─ index.html
+     ├─ hello.html
+     ├─ 403.html
+     ├─ 404.html
+     └─ 500.html
+```
+
+---
+
+## 구성 요소 설명
+
+### HttpServer
+
+* `ServerSocket` 기반으로 클라이언트 연결을 수신합니다.
+* 요청 처리 중 발생하는 예외는 서버 전체를 종료하지 않고 로그로 기록합니다.
+* logback과 slf4j를 이용하여 로그 레벨 분리를 적용했습니다.
+
+
+---
+
+### HttpParser
+
+* Socket `InputStream`을 파싱하여 `HttpRequest` 객체로 변환합니다.
+* Request Line에서 **Path와 Query String을 분리**하여 저장합니다.
+* Query Parameter는 Servlet에서 바로 사용할 수 있도록 미리 병합합니다.
+
+> 보안 Rule에서 Path를 처리할 때 Query String이 섞이지 않도록 설계했습니다.
+
+---
+
+### Dispatcher
+
+#### 역할
+
+1. Host 헤더 기반 가상 호스트 선택
+2. Security Chain 실행
+3. Servlet 처리 시도
+4. 정적 파일 처리
+5. 에러 발생 시 호스트별 에러 페이지 반환
+
+#### Servlet 매핑 전략
+
+* `/Hello` → `servlet.Hello`
+* `/Time` → `servlet.Time`
+
+* 하드코딩된 매핑 테이블 대신 **URL → 클래스명 규칙 기반 로딩**을 사용하였습니다.
+* Reflection + 캐시를 통해 서블릿 재사용합니다.
+
+---
+
+### Security Filter
+
+**Chain of Responsibility 패턴**으로 구현했습니다.
+
+
+* 각 Rule은 자신의 책임만 검사
+* 통과 시 다음 Rule로 위임
+* 차단 시 즉시 HttpResponse 반환
+
+#### 적용된 보안 규칙
+
+* `../` 디렉터리 접근 차단
+* `.exe` 확장자 요청 차단
+
+---
+
+StaticFileHandler
+
+* HostConfig의 `httpRoot` 기준으로 정적 파일을 서빙합니다.
+* Path Traversal 공격 방지를 위해 `normalize()` + `startsWith()` 검증을 수행합니다.
+* `/` 요청은 자동으로 `/index.html`로 매핑됩니다.
+
+---
+
+### ErrorResponseBuilder
+
+* 상태 코드별로 호스트 전용 에러 페이지를 반환합니다.
+
+---
+
+### Servlet 구현
+
+#### Hello Servlet
+
+`Hello, ` + name 출력
+
+* Query Parameter가 없을 경우에도 NPE 없이 동작하도록 HttpRequest에서 기본값 처리
+
+#### Time Servlet
+
+현재 서버 시각 출력
+
+---
+
+## 설정 파일 (config.json)
 
 ```json
 {
   "port": 8000,
   "defaultServletPackage": "servlet",
   "hosts": {
-    "localhost": {
-      "httpRoot": "webroot/localhost",
-      "errorPages": {
-        "403": "403.html",
-        "404": "404.html",
-        "500": "500.html"
-      }
-    },
-    "a.com": {
-      "httpRoot": "webroot/a.com",
-      "errorPages": {
-        "403": "403.html",
-        "404": "404.html",
-        "500": "500.html"
-      }
-    }
+    "localhost": { ... },
+    "a.com": { ... }
   }
 }
 ```
 
-### ConfigLoader 경로 처리(중요)
-
-* Maven 구조에서는 `config.json`을 **`src/main/resources/config.json`**에 두고,
-* `ClassLoader.getResourceAsStream`으로 읽는 방식이 가장 안전합니다.
-* (현재 `new File("config.json")`는 실행 디렉터리(working directory)에 따라 실패할 수 있음)
+* 가상 호스트, 정적 파일 루트, 에러 페이지를 외부 설정으로 분리
+* 코드 수정 없이 서버 동작 변경 가능
 
 ---
 
-## 4. 처리 흐름(전체 아키텍처 설명)
+## 로깅
 
-### 전체 단계
+* logback 프레임워크 사용
+* 로그 파일을 일 단위로 분리
 
-1. **Socket accept** (HttpServer)
-2. **HttpParser.parse(InputStream)**
-
-    * Request line 파싱: `method`, `path`, `queryString`
-    * Headers 파싱
-    * (옵션) Content-Length 기반 body 파싱
-3. **Dispatcher.dispatch(HttpRequest)**
-
-    * Host 헤더 검사 / hostConfig 선택 (VirtualHost)
-    * SecurityRule Chain 적용 (403)
-    * URL → Servlet 클래스 매핑 시도
-    * 실패하면 정적 파일 처리(StaticFileHandler)
-4. **HttpResponseWriter.write(OutputStream, HttpResponse)**
-
-    * Status line + headers + body 작성
 
 ---
 
-## 5. Host 기반 VirtualHost 처리
+## 테스트
 
-* 요청의 `Host` 헤더를 읽어 `ServerConfig.hosts`에서 HostConfig를 찾습니다.
-* 동일 IP/포트라도 Host에 따라 다른 `httpRoot`를 사용하도록 구현했습니다.
+### 테스트 원칙
 
-동작 예:
+* 실제 파일 시스템 기반 검증
+* 문자열 비교 대신 byte 배열 비교
+* 가상 호스트별 동작을 명확히 검증
 
-* `Host: localhost` → `webroot/localhost`
-* `Host: a.com` → `webroot/a.com`
+### 주요 테스트
 
----
-
-## 6. 정적 파일 처리(StaticFileHandler)
-
-* 요청 path가 `/` 이면 `/index.html`로 매핑 (기본 문서 매핑)
-* `hostConfig.httpRoot`를 기준으로 targetPath 생성 후 파일을 읽어 반환
-* 파일이 없거나 디렉터리면 404 에러 페이지 반환
-
----
-
-## 7. 403/404/500 에러 처리(ErrorResponseBuilder)
-
-* 설정 파일의 host별 errorPages 설정을 기반으로 에러 HTML을 반환합니다.
-* 예: 404 발생 시 `{httpRoot}/{errorPages.404}` 파일을 읽어 응답
-
----
-
-## 8. 보안 규칙(SecurityRule, Chain of Responsibility)
-
-과제 요구사항 보안 규칙을 적용합니다.
-
-### 구현 규칙
-
-* Directory Traversal 차단: `..` 등을 통해 httpRoot 밖 접근 시 403
-* `.exe` 확장자 요청 시 403
-* 규칙은 체인으로 연결되어 있어 추후 규칙 추가가 쉽도록 구성
-
----
-
-## 9. SimpleServlet 동작 및 URL 매핑 규칙
-
-과제의 매핑 규칙을 만족하도록 구현했습니다.
-
-### 매핑 규칙
-
-* `/Hello` → `{defaultServletPackage}.Hello`
-* `/service.Hello` → `service.Hello`
-
-Dispatcher에서 `resolveClassName()`으로 URL을 클래스명으로 변환한 뒤,
-`Class.forName(className)`으로 로딩 + 캐싱하여 성능을 확보했습니다.
-
----
-
-## 10. 현재 시각 출력 Servlet
-
-과제 요구사항에 따라 현재 시각을 출력하는 SimpleServlet 구현체를 추가합니다.
-
-예시:
-
-* `/Time` → servlet.Time (현재 시각 출력)
-
----
-
-## 11. 테스트(JUnit4)
-
-`mvn clean package` 시 테스트가 자동 수행됩니다.
-
-테스트는 다음 스펙 검증을 목표로 합니다.
-
-* Host 헤더 미존재 → 400
-* 존재하지 않는 host → 403
-* `/` → index.html 반환
-* 정적 파일 존재 → 200 + Content-Type
-* 정적 파일 없음 → 404
-* 보안 규칙 위반(../, exe) → 403
-* `/Hello?name=jun` 요청 시 Hello servlet이 name 출력
-* `/service.Hello` 매핑 정상 동작
-
-> 주의: 단위테스트에서 `HttpRequest`를 만들 때 `path`에는 `?name=jun`을 포함하면 안 됩니다.
-> 실제 WAS는 HttpParser가 `path`와 `queryParams`를 분리하지만, 테스트에서 `HttpRequest` 생성 시 이를 직접 분리해서 넣어야 합니다.
-
----
-
-## 12. 테스트용 curl 명령어 모음
-
-### (1) 기본 문서
-
-```bash
-curl.exe -H "Host: localhost" http://localhost:8000/
-```
-
-### (2) VirtualHost
-
-```bash
-curl.exe -H "Host: a.com" http://localhost:8000/
-curl.exe -H "Host: b.com" http://localhost:8000/
-```
-
-### (3) 정적 파일
-
-```bash
-curl.exe -H "Host: localhost" http://localhost:8000/style.css
-curl.exe -H "Host: localhost" http://localhost:8000/not-exist.html
-```
-
-### (4) 보안 규칙
-
-> Windows curl/powershell 환경에서 `..`가 정규화될 수 있어, 가능하면 URL 인코딩을 사용합니다.
-
-```bash
-curl.exe -H "Host: localhost" "http://localhost:8000/%2e%2e/%2e%2e/etc/passwd"
-curl.exe -H "Host: localhost" http://localhost:8000/hack.exe
-```
-
-### (5) Servlet 매핑
-
-```bash
-curl.exe -H "Host: localhost" http://localhost:8000/Hello
-curl.exe -H "Host: localhost" "http://localhost:8000/Hello?name=jun"
-curl.exe -H "Host: localhost" http://localhost:8000/service.Hello
-curl.exe -H "Host: localhost" http://localhost:8000/Time
-```
-
----
-
-## 13. 요구사항 충족 여부 체크리스트
-
-* [x] Host 헤더 기반 VirtualHost 처리
-* [x] 설정파일(JSON)로 포트/host별 루트/에러페이지 관리
-* [x] 403/404/500 에러 HTML 반환
-* [x] 보안 규칙(상위 디렉터리 접근, exe 차단) + 확장 가능한 구조
-* [ ] logback 로깅(일 단위 파일 분리/레벨/stacktrace)
-* [x] SimpleServlet 동작 + URL→클래스 매핑 규칙
-* [x] 현재 시각 출력 SimpleServlet 구현
-* [x] JUnit4 테스트 작성 + mvn clean package로 수행
-
----
-
-## 14. 향후 확장 고려 사항
-
-* URL→Servlet 매핑을 설정파일 기반으로 확장 가능하도록 Dispatcher 설계를 유지
-* SecurityRule 체인을 통해 규칙 추가 용이
-* ConfigLoader를 resources 기반 로딩으로 변경하면 실행 안정성 향상
-* Logback 적용 시 운영 수준 로깅을 갖추게 됨(과제 요구사항)
-
-```
-
----
-
-# 추가로 지금 상태에서 “가장 중요한 점검 포인트” 3개
-
-1) **ConfigLoader 경로**
-- `new File("config.json")` 방식은 “실행 위치”에 따라 깨질 수 있어.
-- 제출용으론 `src/main/resources/config.json` + classpath 로딩으로 바꾸는 걸 추천.
-
-2) **logback 요구사항(스펙 5번)**
-- 대화 흐름상 아직 logback 설정/적용 코드는 안 보였어.
-- 만약 미구현이면 README 체크리스트에서처럼 **미구현 표시**하고, 시간이 되면 `logback.xml` + logger 적용까지 넣는 게 좋아. :contentReference[oaicite:19]{index=19}
-
-3) **테스트에서 queryString 넣는 방식**
-- 단위테스트에서 `HttpRequest`를 직접 만들면 `path`에는 `/Hello`만 넣고,
-- `queryParams`에 `name=jun`을 넣어야 실제 파서 동작과 일치해.
-
----
-
-원하면 내가 다음을 바로 이어서 만들어줄게:
-- **logback.xml + Logger 적용 코드(요구사항 5 완성)**
-- **JUnit4 테스트 세트 전체(스펙별로 분리, 실제로 통과하도록)**  
-- **ConfigLoader를 resources 기반으로 수정 + 경로 문제 완전 해결**
-```
+* DispatcherTest
+* HostRoutingTest
+* HelloServletTest
+* SecurityRuleTest
