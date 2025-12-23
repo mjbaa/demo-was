@@ -9,12 +9,12 @@ import security.ExecutableExtensionRule;
 import security.SecurityRule;
 import servlet.SimpleServlet;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Dispatcher {
     private static final Logger log = LoggerFactory.getLogger(Dispatcher.class);
-    private final Map<String, SimpleServlet> servletCache = new HashMap<>();
+    private final Map<String, SimpleServlet> servletCache = new ConcurrentHashMap<>();
 
     private final ServerConfig serverConfig;
     private final SecurityRule securityChain;
@@ -66,16 +66,14 @@ public class Dispatcher {
 
             servlet.service(request,response);
             return response;
-        } catch (ClassNotFoundException e){
-            //정적 파일 처리
-            return StaticFileHandler.handle(request,hostConfig);
         } catch (Exception e){
+            //정적 파일 처리
+            if (e.getCause() instanceof ClassNotFoundException) {
+                return StaticFileHandler.handle(request, hostConfig);
+            }
             log.error("Internal server error", e);
             return ErrorResponseBuilder.build(500,hostConfig);
         }
-
-
-        
 
     }
     
@@ -94,26 +92,19 @@ public class Dispatcher {
     
     //클래스명으로 servlet 반환
     private SimpleServlet loadServlet(String className) throws Exception {
+        return servletCache.computeIfAbsent(className, name -> {
+            try {
+                Class<?> temp = Class.forName(name);
 
-        //캐시에 있으면 재사용
-        if(servletCache.containsKey(className)){
-            return servletCache.get(className);
-        }
+                if (!SimpleServlet.class.isAssignableFrom(temp)) {
+                    throw new IllegalArgumentException();
+                }
 
-        //클래스 로딩 ( 문자열 -> Class 객체 )
-        //클래스 없을 때 -> Class Not Found Exception 발생
-        Class<?> temp = Class.forName(className);
-
-        //클래스가 SimpleServlet인지 검증
-        if(!SimpleServlet.class.isAssignableFrom(temp)){
-            throw new IllegalArgumentException();
-        }
-        
-        //객체 생성 : Class -> 새로운 인스턴스
-        SimpleServlet servlet = (SimpleServlet) temp.getDeclaredConstructor().newInstance();
-
-        servletCache.put(className, servlet);
-        return servlet;
+                return (SimpleServlet) temp.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
 }

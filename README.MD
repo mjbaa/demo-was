@@ -1,4 +1,4 @@
-## 2. 구조
+## 구조
 
 요청 처리 흐름은 다음과 같습니다.
 
@@ -28,7 +28,7 @@
 
 ---
 
-## 3. 주요 패키지 구조
+## 주요 패키지 구조
 
 ```
 src/main/java
@@ -207,3 +207,29 @@ StaticFileHandler
 * HostRoutingTest
 * HelloServletTest
 * SecurityRuleTest
+
+
+---
+## 추가 구현 사항
+
+### 멀티스레드 요청 처리
+
+단일 스레드 방식의 한계를 보완하기 위해 멀티스레드 구조를 적용했습니다.
+
+* `ExecutorService` 기반의 고정 크기 스레드 풀을 사용하여 요청을 처리합니다.
+* 스레드 풀 크기는 `config.json`에서 설정하도록 분리하여 환경에 따라 조정할 수 있도록 했습니다.
+* 클라이언트 연결 수락(`accept`)과 실제 요청 처리를 분리하여, 서버가 다수의 동시 요청을 안정적으로 처리할 수 있도록 설계했습니다.
+
+### Graceful Shutdown
+
+서버 종료 시 진행 중인 요청이 갑자기 중단되지 않도록 Graceful Shutdown을 구현했습니다.
+
+* JVM 종료 시 ShutdownHook을 등록하여 스레드 풀을 안전하게 종료합니다.
+* 일정 시간 동안 기존 작업이 완료되기를 대기한 후, 완료되지 않은 작업이 있을 경우 강제 종료를 수행합니다
+
+### Dispatcher의 Thread-Safety 보장
+
+멀티스레드 환경에서 Dispatcher가 안전하게 동작하도록 내부 구조를 개선했습니다.
+
+* Servlet 캐시는 ConcurrentHashMap을 사용하여 동시 접근 문제를 방지했습니다.
+* computeIfAbsent()를 활용해 Servlet 인스턴스 생성과 캐싱을 원자적으로 처리했습니다.

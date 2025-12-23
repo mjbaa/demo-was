@@ -5,6 +5,7 @@ import java.util.Map;
 //서버 전체 설정 : port, host 설정들
 public class ServerConfig {
     private int port;
+    private int threadPoolSize;
     private String defaultServletPackage;
     private Map<String, HostConfig> hosts;
 
@@ -12,6 +13,9 @@ public class ServerConfig {
         return port;
     }
 
+    public int getThreadPoolSize() {
+        return threadPoolSize;
+    }
     public String getDefaultServletPackage() {
         return defaultServletPackage;
     }

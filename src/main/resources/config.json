@@ -1,5 +1,6 @@
 {
   "port": 8000,
+  "threadPoolSize": 10,
   "defaultServletPackage": "servlet",
   "hosts": {
     "localhost": {
