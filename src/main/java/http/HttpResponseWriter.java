@@ -8,16 +8,10 @@ import java.util.Map;
 public class HttpResponseWriter {
     public static void write(OutputStream out, HttpResponse response) throws IOException {
         //status line
-        //ex)"HTTP/1.1 200 OK\r\n"
         String statusLine =
                 "HTTP/1.1 "+
                         response.getStatusCode()+" "+
                         response.getReasonPhrase() +
-                        // Http : CRLF를 줄바꿈으로 사용
-                        /*
-                        \r = carriage return
-                        \n = line feed
-                         */
                         "\r\n";
 
 

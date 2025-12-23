@@ -1,13 +1,10 @@
 package http;
 
 import config.ConfigLoader;
-import config.ServerConfig;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
 
 import static org.junit.Assert.*;
 
@@ -21,7 +18,7 @@ public class HostRoutingTest {
     }
 
     @Test
-    public void bComhostIndexShouldLoadBComHtml() throws IOException {
+    public void bComhostIndexShouldLoadBComHtml() throws Exception {
         HttpRequest request = HttpRequest.testRequest(
                 "GET",
                 "/index.html",
@@ -29,16 +26,15 @@ public class HostRoutingTest {
         );
 
         HttpResponse response = dispatcher.dispatch(request);
-        byte[] expected = Files.readAllBytes(
-                Path.of("webroot/b.com/index.html")
-        );
+
+        byte[] expected = loadResource("webroot/b.com/index.html");
+
         assertEquals(200, response.getStatusCode());
         assertArrayEquals(expected, response.getBody());
-
     }
 
     @Test
-    public void aComIndexShouldLoadAComHtml() throws IOException {
+    public void aComIndexShouldLoadAComHtml() throws Exception {
         HttpRequest request = HttpRequest.testRequest(
                 "GET",
                 "/index.html",
@@ -46,54 +42,51 @@ public class HostRoutingTest {
         );
 
         HttpResponse response = dispatcher.dispatch(request);
-        byte[] expected = Files.readAllBytes(
-                Path.of("webroot/a.com/index.html")
-        );
+
+        byte[] expected = loadResource("webroot/a.com/index.html");
+
         assertEquals(200, response.getStatusCode());
         assertArrayEquals(expected, response.getBody());
     }
 
     @Test
-    public void aComNotFoundShouldReturnACom404Page() throws IOException {
-        // given
+    public void aComNotFoundShouldReturnACom404Page() throws Exception {
         HttpRequest request = HttpRequest.testRequest(
                 "GET",
                 "/not-exist.html",
                 "a.com"
         );
 
-        // when
         HttpResponse response = dispatcher.dispatch(request);
 
-        // then
-        byte[] expected = Files.readAllBytes(
-                Path.of("webroot/a.com/404.html")
-        );
+        byte[] expected = loadResource("webroot/a.com/404.html");
 
         assertEquals(404, response.getStatusCode());
         assertArrayEquals(expected, response.getBody());
     }
 
     @Test
-    public void bComNotFoundShouldReturnBCom404Page() throws IOException {
-        // given
+    public void bComNotFoundShouldReturnBCom404Page() throws Exception {
         HttpRequest request = HttpRequest.testRequest(
                 "GET",
                 "/not-exist.html",
                 "b.com"
         );
 
-        // when
         HttpResponse response = dispatcher.dispatch(request);
 
-        // then
-        byte[] expected = Files.readAllBytes(
-                Path.of("webroot/b.com/404.html")
-        );
+        byte[] expected = loadResource("webroot/b.com/404.html");
 
         assertEquals(404, response.getStatusCode());
         assertArrayEquals(expected, response.getBody());
     }
 
+    private byte[] loadResource(String path) throws Exception {
+        InputStream is = getClass()
+                .getClassLoader()
+                .getResourceAsStream(path);
 
+        assertNotNull("Test resource not found: " + path, is);
+        return is.readAllBytes();
+    }
 }

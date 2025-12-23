@@ -4,9 +4,8 @@ import config.HostConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+
 
 // HostConfig 기반 에러 응답 생성
 public class ErrorResponseBuilder {
@@ -24,31 +23,29 @@ public class ErrorResponseBuilder {
             return defaultError(statusCode);
         }
 
-        try {
-            Path webRoot = Path.of(hostConfig.getHttpRoot())
-                    .toAbsolutePath()
-                    .normalize();
+        String resourcePath =
+                hostConfig.getHttpRoot() + "/" + errorPage;
 
-            Path errorFilePath = webRoot
-                    .resolve(errorPage)
-                    .normalize();
+        try (InputStream is = ErrorResponseBuilder.class
+                .getClassLoader()
+                .getResourceAsStream(resourcePath)) {
 
-            if(!errorFilePath.startsWith(webRoot)){
+            if (is == null) {
+                log.warn("Error page not found: {}", resourcePath);
                 return defaultError(statusCode);
             }
 
-            if(Files.exists(errorFilePath) && !Files.isDirectory(errorFilePath)){
-                byte[] body = Files.readAllBytes(errorFilePath);
-                HttpResponse response = new HttpResponse(statusCode, reasonPhrase(statusCode),body);
-                response.addHeader("Content-Type", "text/html; charset=utf-8");
-                return response;
-            }
+            byte[] body = is.readAllBytes();
+            HttpResponse response =
+                    new HttpResponse(statusCode, reasonPhrase(statusCode), body);
+            response.addHeader("Content-Type", "text/html; charset=utf-8");
+            return response;
 
-        } catch(IOException e){
-            log.error("Failed to load error page");
+        } catch (Exception e){
+            log.error("Failed to load error page: {}", resourcePath, e);
+            return defaultError(statusCode);
         }
 
-        return defaultError(statusCode);
     }
 
     //공통 fallback 에러 응답

@@ -28,65 +28,6 @@
 
 ---
 
-## 주요 패키지 구조
-
-```
-src/main/java
- ├─ HttpServer
- ├─ http
- │   ├─ HttpParser
- │   ├─ Dispatcher
- │   ├─ HttpRequest / HttpResponse
- │   ├─ StaticFileHandler
- │   ├─ ErrorResponseBuilder
- │   └─ HttpResponseWriter
- │
- ├─ servlet
- │   ├─ SimpleServlet
- │   ├─ Hello
- │   └─ Time
- │
- ├─ security
- │   ├─ SecurityRule
- │   ├─ AbstractSecurityRule
- │   ├─ DirectoryTraversalRule
- │   └─ ExecutableExtensionRule
- │
- ├─ config
- │   ├─ ConfigLoader
- │   ├─ ServerConfig
- │   └─ HostConfig
- │
- └─ resources
-     ├─ config.json
-     └─ logback.xml
-```
-
-정적 파일은 실행 환경에서 가상 호스트별로 분리된 외부 디렉터리를 사용합니다.
-
-```
-webroot/
- ├─ localhost/
- │   ├─ index.html
- │   ├─ hello.html
- │   ├─ 403.html
- │   ├─ 404.html
- │   └─ 500.html
- ├─ a.com/
- │   ├─ index.html
- │   ├─ hello.html
- │   ├─ 403.html
- │   ├─ 404.html
- │   └─ 500.html
- └─ b.com/
-     ├─ index.html
-     ├─ hello.html
-     ├─ 403.html
-     ├─ 404.html
-     └─ 500.html
-```
-
----
 
 ## 구성 요소 설명
 
@@ -140,14 +81,6 @@ webroot/
 
 * `../` 디렉터리 접근 차단
 * `.exe` 확장자 요청 차단
-
----
-
-StaticFileHandler
-
-* HostConfig의 `httpRoot` 기준으로 정적 파일을 서빙합니다.
-* Path Traversal 공격 방지를 위해 `normalize()` + `startsWith()` 검증을 수행합니다.
-* `/` 요청은 자동으로 `/index.html`로 매핑됩니다.
 
 ---
 

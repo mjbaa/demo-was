@@ -78,14 +78,10 @@ public class HttpRequest {
         return Collections.unmodifiableMap(parameters);
     }
 
-    //----
-    //HTTP 원본 데이터 접근용 ( 디버깅/확장 )
-
     public Map<String, String> getQueryParams() {
         return Collections.unmodifiableMap(queryParams);
     }
 
-    //byte[]인 이유 : Post JSON, 파일 업로드, 이진 데이터  -> http는 결국 바이트 단위 통신
     public byte[] getBody() {
         return body;
     }

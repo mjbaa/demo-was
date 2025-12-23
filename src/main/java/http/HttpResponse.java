@@ -61,7 +61,6 @@ public class HttpResponse {
         return headers;
     }
 
-    //Content-Type, Connection, Server 등을 나중에 추가 가능
     public void addHeader(String key, String value) {
         headers.put(key, value);
     }

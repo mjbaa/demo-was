@@ -52,19 +52,14 @@ public class HttpParser {
             headers.put(headerName, headerValue);
         }
 
-        //body 파싱
-        /*
-        최소구현 : 나중에 JSON, form-data, 파일 업로드로 확장 가능
-         */
+
         byte[] body = new byte[0];
         String contentLengthValue = headers.get("content-length");
         if(contentLengthValue != null){
-            //최소구현
             int contentLength = Integer.parseInt(contentLengthValue);
             char[] bodyChars = new char[contentLength];
             int read = br.read(bodyChars);
             body = new String(bodyChars, 0, read).getBytes(StandardCharsets.UTF_8);
-//            body = br.readLine() != null ? br.readLine().getBytes(StandardCharsets.UTF_8) : new byte[0];
         }
         
         //문자열 덩어리 -> 요청 객체

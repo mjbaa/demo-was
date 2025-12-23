@@ -2,9 +2,8 @@ package http;
 
 import config.HostConfig;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+
 
 public class StaticFileHandler {
 
@@ -18,42 +17,40 @@ public class StaticFileHandler {
                 requestPath = "/index.html";
             }
 
-            //HostConfig 기반 webRoot
-            Path webRoot = Path.of(hostConfig.getHttpRoot()).toAbsolutePath().normalize();
-            
-            //실제 파일 경로
-            Path targetPath = webRoot
-                    //-> 문자열 결합과 달리 OS별 경로 구분자 자동 처리, 절대경로/상대경로 의미 유지
-                    .resolve(requestPath.substring(1)) // "/index.html" → "index.html"
-                    .normalize();
+            String resourcePath = hostConfig.getHttpRoot() + requestPath;
 
-            //파일 존재, 디렉터리 여부 확인
-            if(!Files.exists(targetPath) || Files.isDirectory(targetPath)) {
+            if (resourcePath.startsWith("/")) {
+                resourcePath = resourcePath.substring(1);
+            }
+
+            InputStream is =
+                    StaticFileHandler.class
+                            .getClassLoader()
+                            .getResourceAsStream(resourcePath);
+
+            if (is == null) {
                 return ErrorResponseBuilder.build(404, hostConfig);
             }
 
-            //파일 읽기
-            byte[] body = Files.readAllBytes(targetPath);
-            HttpResponse response = new HttpResponse(200, "OK", body);
+            byte[] body = is.readAllBytes();
 
-            //Content-Type 결정
-            response.addHeader("Content-Type", guessContentType(targetPath));
+            HttpResponse response = new HttpResponse(200, "OK", body);
+            response.addHeader("Content-Type", guessContentType(resourcePath));
             return response;
 
-        }catch (IOException e) {
+        }catch (Exception e) {
             return ErrorResponseBuilder.build(500, hostConfig);
         }
     }
     
     //확장자 기반 추론
-    private static String guessContentType(Path path) {
-        String fileName = path.toString();
+    private static String guessContentType(String path) {
 
-        if (fileName.endsWith(".html")) return "text/html; charset=utf-8";
-        if (fileName.endsWith(".css")) return "text/css; charset=utf-8";
-        if (fileName.endsWith(".js")) return "application/javascript; charset=utf-8";
-        if (fileName.endsWith(".png")) return "image/png";
-        if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) return "image/jpeg";
+        if (path.endsWith(".html")) return "text/html; charset=utf-8";
+        if (path.endsWith(".css")) return "text/css; charset=utf-8";
+        if (path.endsWith(".js")) return "application/javascript; charset=utf-8";
+        if (path.endsWith(".png")) return "image/png";
+        if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
 
         return "application/octet-stream";
     }
