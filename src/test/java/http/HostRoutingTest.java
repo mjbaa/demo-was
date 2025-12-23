@@ -21,16 +21,16 @@ public class HostRoutingTest {
     }
 
     @Test
-    public void localhostIndexShouldLoadLocalhostHtml() throws IOException {
+    public void bComhostIndexShouldLoadBComHtml() throws IOException {
         HttpRequest request = HttpRequest.testRequest(
                 "GET",
                 "/index.html",
-                "localhost"
+                "b.com"
         );
 
         HttpResponse response = dispatcher.dispatch(request);
         byte[] expected = Files.readAllBytes(
-                Path.of("webroot/localhost/index.html")
+                Path.of("webroot/b.com/index.html")
         );
         assertEquals(200, response.getStatusCode());
         assertArrayEquals(expected, response.getBody());
@@ -75,12 +75,12 @@ public class HostRoutingTest {
     }
 
     @Test
-    public void localhostNotFoundShouldReturnLocalhost404Page() throws IOException {
+    public void bComNotFoundShouldReturnBCom404Page() throws IOException {
         // given
         HttpRequest request = HttpRequest.testRequest(
                 "GET",
                 "/not-exist.html",
-                "localhost"
+                "b.com"
         );
 
         // when
@@ -88,7 +88,7 @@ public class HostRoutingTest {
 
         // then
         byte[] expected = Files.readAllBytes(
-                Path.of("webroot/localhost/404.html")
+                Path.of("webroot/b.com/404.html")
         );
 
         assertEquals(404, response.getStatusCode());
