@@ -72,7 +72,7 @@ webroot/
  │   ├─ 403.html
  │   ├─ 404.html
  │   └─ 500.html
-  ├─ a.com/
+ ├─ a.com/
  │   ├─ index.html
  │   ├─ hello.html
  │   ├─ 403.html
